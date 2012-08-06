@@ -61,11 +61,10 @@ class IrAttachment(ModelSQL, ModelView):
 
     uploaded_by = fields.Many2One('nereid.user', 'Uploaded By')
 
-    def write(self, ids, values):
+    def create(self, values):
         """
-        Update write to save uploaded by
+        Update create to save uploaded by
 
-        :param ids: IDs of the attachments
         :param values: A dictionary
         """
         if has_request_context():
@@ -74,7 +73,7 @@ class IrAttachment(ModelSQL, ModelView):
             # TODO: try to find the nereid user from the employee
             # if an employee made the update
 
-        return super(IrAttachment, self).write(ids, values)
+        return super(IrAttachment, self).create(values)
 
 IrAttachment()
 
@@ -593,6 +592,55 @@ class Project(ModelSQL, ModelView):
         return send_file(
             f.name, attachment_filename=attachment.name, as_attachment=True
         )
+
+    @login_required
+    def upload_file(self):
+        """
+        Upload the file to a project or task with owner/uploader
+        as the current user
+        """
+        attachment_obj = Pool().get('ir.attachment')
+
+        work = None
+        if request.form.get('project', None):
+            work = self.get_project(request.form.get('project', type=int))
+        if request.form.get('task', None):
+            work = self.get_task(request.form.get('task', type=int))
+
+        if not work:
+            # Neither task, nor the project is specified
+            raise abort(404)
+
+        attached_file =  request.files["file"]
+
+        data = {
+            'resource': '%s,%d' % (self._name, work.id),
+            'description': request.form.get('description', False)
+        }
+
+        if request.form.get('file_type') == 'link':
+            link = request.form.get('url')
+            data.update({
+                'link': link,
+                'name': link.split('/')[-1],
+                'type': 'link'
+            })
+        else:
+            data.update({
+                'data': attached_file.stream.read(),
+                'name': attached_file.filename,
+                'type': 'data'
+            })
+
+        attachment_id = attachment_obj.create(data)
+
+        if request.is_xhr:
+            return jsonify({
+                'success': True
+            })
+
+        flash("Attachment added to %s" % work.name)
+        return redirect(request.referrer)
 
     @login_required
     def update_task(self, task_id, project_id=None):

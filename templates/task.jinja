@@ -83,56 +83,168 @@
 </script>
 
 <hr/>
+<h4>{{ _('Files') }}
+
+  <!-- Modal for attaching files to task -->
+  <div class="modal fade" id="attach-file">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">×</button>
+      <h3>{{ _('Attach a file to the task task') }}</h3>
+    </div>
+    <div class="modal-body">
+      <script>
+        $(document).ready(function(){
+
+          function toggle_fields() {
+            if ($('select option:selected').attr('value') == 'link') {
+              $('label#label-file').hide();
+              $('input#file').attr('required', false).hide();
+              $('label#label-url').show();
+              $('input#url').attr('required', true).show();
+            } else {
+              $('label#label-url').hide();
+              $('input#url').attr('required', false).hide();
+              $('label#label-file').show();
+              $('input#file').attr('required', true).show();
+            }
+          };
+
+          toggle_fields();
+
+          // popover
+          $("input").popover({
+            placement: 'bottom',
+            trigger: 'focus'
+          });
+
+          // Toggle fields as per type
+          $('#file_type').change(function(){
+            toggle_fields();
+          });
+
+        });
+      </script>
+      <form class="form-vertical well" id="attach-file-form" method="POST"
+        action="{{ url_for("project.work.upload_file") }}" enctype="multipart/form-data">
+
+        <input type="hidden" name="task" value="{{ task.id }}"/>
+
+        <label for="file_type">Type:</label>
+        <select id="file_type" name="file_type" required='required'>
+          <option value="link">Link (From Internet)</option>
+          <option value="data">Local (From your Computer)</option>
+        </select>
+
+        <label for="url" id="label-url">URL:</label>
+        <input class="span12" type="text" placeholder="http://www.google.com" rel="popover"
+          data-content="URL of the file to be attached" data-original-title="URL"
+          name="url" required="required" id="url"/>
+
+        <label for="file" id="label-file">Local File:</label>
+        <input class="span12" type="file" rel="popover"
+          data-content="Select local file to be attached" data-original-title="File"
+          name="file" required="required" id="file"/>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-info pull-right span6 offset3" 
+            id="btn-attach-file" data-loading-text="Uploading...">
+            <i class="icon-plus icon-white"></i> {{ _('Save') }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="btn-group pull-right add-file-to-task">
+    <a class="btn pull-right" data-toggle="modal" href="#attach-file"><i class="icon-plus"></i></a>
+  </div>
+  {% if not task.attachments %}<br><small>{{ _('No files attached yet.') }}</small>{% endif %}
+</h4>
+<br/>
+
+{% if task.attachments %}
+  <ul class="nav nav-tabs nav-stacked">
+  
+    {% for attachment in task.attachments %}
+      <li {% if active_type_name == 'recent' %}class="active"{% endif %}>
+        <a>
+          {{ attachment.name|truncate(15) }}
+          {% if attachment.type == 'data' %}
+          <button data-url="{{ url_for('project.work.download_file', attachment_id=attachment.id, task=task.id) }}"
+            class="btn pull-right attachment" title="Download File", rel="tooltip" style="line-height:10px;">
+              <i class="icon-download"></i>
+          </button> 
+          {% elif attachment.type == 'link' %}
+          <button data-url="{{ attachment.link }}" target="new" class="btn pull-right attachment" title="Download File"
+            rel="tooltip" style="line-height:10px;"><i class="icon-share-alt"></i>
+          </button>
+          {% endif %}
+        </a>
+      </li>
+    {% endfor %}
+    <script>
+      $(document).ready(function(){
+        $('button.attachment').click(function(){
+          window.location = $(this).attr('data-url')
+        });
+      });
+    </script>
+  </ul>
+  <div class="clear">&nbsp;</div>
+{% endif %}
+
+<hr/>
 
 {% if task.timesheet_lines %}
 <h4>{{ _('Time Spent') }}
-{% if request.nereid_user.employee %}
+  {% if request.nereid_user.employee %}
 
-<!-- Modal for marking time on  task -->
-<div class="modal fade" id="mark-time">
-  <div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal">×</button>
-    <h3>{{ _('Mark your time on task') }}</h3>
-  </div>
-  <div class="modal-body">
-    <script>
-      $(document).ready(function(){
-        // popover
-        $("input").popover({
-          placement: 'bottom',
-          trigger: 'focus'
+  <!-- Modal for marking time on  task -->
+  <div class="modal fade" id="mark-time">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">×</button>
+      <h3>{{ _('Mark your time on task') }}</h3>
+    </div>
+    <div class="modal-body">
+      <script>
+        $(document).ready(function(){
+          // popover
+          $("input").popover({
+            placement: 'bottom',
+            trigger: 'focus'
+          });
         });
-      });
-      function checkform() {
-        var hours = document.marktimeform.hours.value
-        if (parseFloat(hours)==hours) {
-          return true;
-        } else {
-          alert("Time to be marked in Numeric/Decimal Values only")
-          return false;
+        function checkform() {
+          var hours = document.marktimeform.hours.value
+          if (parseFloat(hours)==hours) {
+            return true;
+          } else {
+            alert("Time to be marked in Numeric/Decimal Values only")
+            return false;
+          };
         };
-      };
-    </script>
-    <form class="form-vertical well" id="mark-time-form" method="POST" 
-        action="{{ url_for('project.work.mark_time', task_id=task.id) }}"
-        onSubmit="return checkform()" name="marktimeform">
-      <label for="hours">Hours:</label>
-      <input class="span12" type="text" placeholder="2" rel="popover"
-        data-content="Time to be marked in Numeric/Decimal Values only" data-original-title="Hours"
-        name="hours" required="required" id="hours"/>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-info pull-right span6 offset3" 
-          id="btn-mark-time" data-loading-text="Marking Time">
-          <i class="icon-plus icon-white"></i> {{ _('Save') }}
-        </button>
-      </div>
-    </form>
+      </script>
+      <form class="form-vertical well" id="mark-time-form" method="POST" 
+          action="{{ url_for('project.work.mark_time', task_id=task.id) }}"
+          onSubmit="return checkform()" name="marktimeform">
+        <label for="hours">Hours:</label>
+        <input class="span12" type="text" placeholder="2" rel="popover"
+          data-content="Time to be marked in Numeric/Decimal Values only" data-original-title="Hours"
+          name="hours" required="required" id="hours"/>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-info pull-right span6 offset3" 
+            id="btn-mark-time" data-loading-text="Marking Time">
+            <i class="icon-plus icon-white"></i> {{ _('Save') }}
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
-</div>
 
-<a class="btn pull-right" data-toggle="modal" href="#mark-time"><i class="icon-plus"></i></a>
-{% endif %}
-<br/><small> by employee</small></h4>
+  <a class="btn pull-right" data-toggle="modal" href="#mark-time"><i class="icon-plus"></i></a>
+  {% endif %}
+  <br/><small> by employee</small>
+</h4>
 <ul class="nav nav-tabs nav-stacked">
   <li><a><div id="chart_div" ></div></a></li>
   <script>

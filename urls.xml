@@ -145,5 +145,12 @@
             <field name="sequence" eval="05" />
             <field name="url_map" ref="nereid.default_url_map" />
         </record>
+        <record id="project_attachment_upload" model="nereid.url_rule">
+            <field name="rule">/&lt;language&gt;/attachment/-upload</field>
+            <field name="endpoint">project.work.upload_file</field>
+            <field name="sequence" eval="50" />
+            <field name="methods">("POST",)</field>
+            <field name="url_map" ref="nereid.default_url_map" />
+        </record>
     </data>
 </tryton>
